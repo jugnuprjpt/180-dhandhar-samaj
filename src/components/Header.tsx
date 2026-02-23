@@ -36,22 +36,28 @@ export default function Header() {
             </div>
           </Link>
 
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
+          <div className="hidden md:flex items-center space-x-4">
+            <div className="flex items-baseline space-x-4">
               {navItems.map((item) => (
                 <Link
                   key={item.id}
                   href={item.href}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive(item.href)
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(item.href)
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   {item.label}
                 </Link>
               ))}
             </div>
+            <div className="h-6 w-px bg-gray-200 mx-2"></div>
+            <Link
+              href="/login"
+              className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 transition-all shadow-md transform hover:scale-105 active:scale-95"
+            >
+              Sign In
+            </Link>
           </div>
 
           <div className="md:hidden">
@@ -72,15 +78,23 @@ export default function Header() {
                   key={item.id}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                    isActive(item.href)
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium transition-colors ${isActive(item.href)
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   {item.label}
                 </Link>
               ))}
+              <div className="pt-4 border-t border-gray-100 mt-2">
+                <Link
+                  href="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block w-full text-center px-3 py-3 rounded-xl text-base font-bold text-white bg-gradient-to-r from-blue-600 to-cyan-500 transition-colors"
+                >
+                  Sign In
+                </Link>
+              </div>
             </div>
           </div>
         )}
