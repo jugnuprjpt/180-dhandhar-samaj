@@ -1,19 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2, X } from 'lucide-react'
-import { mockAchievements } from '@/lib/mock-data'
-import type { Database } from '@/lib/database.types'
+import { AchievementService } from '@/services/achievement.service'
 
-type Achievement = Database['public']['Tables']['achievements']['Row']
-type AchievementInsert = Database['public']['Tables']['achievements']['Insert']
+interface Achievement {
+  _id: string;
+  memberName: string;
+  title: string;
+  rank?: string;
+  description?: string;
+  date: string;
+  category: 'Academic' | 'Sports' | 'Cultural' | 'Other';
+}
 
 export default function ManageAchievements() {
-  const [achievements, setAchievements] = useState<Achievement[]>([...mockAchievements])
+  const [achievements, setAchievements] = useState<Achievement[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [formData, setFormData] = useState<Partial<AchievementInsert>>({
-    member_name: '',
+  const [formData, setFormData] = useState<Partial<Achievement>>({
+    memberName: '',
     title: '',
     rank: '',
     description: '',
@@ -21,56 +28,98 @@ export default function ManageAchievements() {
     category: 'Academic',
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const now = new Date().toISOString()
-    if (editingId) {
-      setAchievements((prev) =>
-        prev.map((a) =>
-          a.id === editingId
-            ? { ...a, ...formData, updated_at: now } as Achievement
-            : a
-        )
-      )
-    } else {
-      const newAchievement: Achievement = {
-        id: `ach-${Date.now()}`,
-        member_name: formData.member_name!,
-        title: formData.title!,
-        rank: formData.rank ?? null,
-        description: formData.description ?? null,
-        date: formData.date!,
-        category: (formData.category as Achievement['category']) ?? 'Academic',
-        image: null,
-        created_at: now,
-        updated_at: now,
+  useEffect(() => {
+    fetchAchievements()
+  }, [])
+
+  const fetchAchievements = async () => {
+    setIsLoading(true)
+    try {
+      const { data, error } = await AchievementService.listAchievement()
+      if (data && data.data) {
+        setAchievements(data.data)
+      } else if (error) {
+        console.error('Failed to fetch achievements:', error)
       }
-      setAchievements((prev) => [newAchievement, ...prev])
+    } catch (err) {
+      console.error('Error fetching achievements:', err)
+    } finally {
+      setIsLoading(false)
     }
-    resetForm()
   }
 
-  const handleEdit = (achievement: Achievement) => {
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return ''
+    const [year, month, day] = dateStr.split('-')
+    return `${day}/${month}/${year}`
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    try {
+      const payload = {
+        ...formData,
+        date: formatDate(formData.date || ''),
+      }
+
+      if (editingId) {
+        const { data, error } = await AchievementService.updateAchievement(editingId, payload)
+        if (data && data.status === 'true') {
+          await fetchAchievements()
+          resetForm()
+        } else if (error) {
+          alert(`Error: ${error}`)
+        }
+      } else {
+        const { data, error } = await AchievementService.createAchievement(payload)
+        if (data && data.status === 'true') {
+          await fetchAchievements()
+          resetForm()
+        } else if (error) {
+          alert(`Error: ${error}`)
+        }
+      }
+    } catch (err) {
+      console.error('Submission error:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleEdit = (achievement: any) => {
     setFormData({
-      member_name: achievement.member_name,
+      memberName: achievement.memberName || achievement.member_name,
       title: achievement.title,
       rank: achievement.rank,
       description: achievement.description,
-      date: achievement.date.split('T')[0],
+      date: achievement.date ? new Date(achievement.date).toISOString().split('T')[0] : '',
       category: achievement.category,
     })
-    setEditingId(achievement.id)
+    setEditingId(achievement._id || achievement.id)
     setShowForm(true)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this achievement?')) return
-    setAchievements((prev) => prev.filter((a) => a.id !== id))
+    setIsLoading(true)
+    try {
+      const { data, error } = await AchievementService.deleteAchievement(id)
+      if (data && data.status === 'true') {
+        fetchAchievements()
+      } else if (error) {
+        alert(`Error: ${error}`)
+      }
+    } catch (err) {
+      console.error('Delete error:', err)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const resetForm = () => {
     setFormData({
-      member_name: '',
+      memberName: '',
       title: '',
       rank: '',
       description: '',
@@ -113,8 +162,8 @@ export default function ManageAchievements() {
                 <input
                   type="text"
                   required
-                  value={formData.member_name}
-                  onChange={(e) => setFormData({ ...formData, member_name: e.target.value })}
+                  value={formData.memberName || ''}
+                  onChange={(e) => setFormData({ ...formData, memberName: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                 />
               </div>
@@ -187,9 +236,10 @@ export default function ManageAchievements() {
             <div className="flex gap-3">
               <button
                 type="submit"
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={isLoading}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
-                {editingId ? 'Update Achievement' : 'Add Achievement'}
+                {isLoading ? 'Processing...' : (editingId ? 'Update Achievement' : 'Add Achievement')}
               </button>
               <button
                 type="button"
@@ -204,14 +254,16 @@ export default function ManageAchievements() {
       )}
 
       <div className="space-y-4">
-        {achievements.length === 0 ? (
+        {isLoading && achievements.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">Loading achievements...</div>
+        ) : achievements.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             No achievements found. Add your first achievement!
           </div>
         ) : (
-          achievements.map((achievement) => (
+          achievements.map((achievement: any) => (
             <div
-              key={achievement.id}
+              key={achievement._id || achievement.id}
               className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
             >
               <div className="flex justify-between items-start">
@@ -222,7 +274,7 @@ export default function ManageAchievements() {
                       {achievement.category}
                     </span>
                   </div>
-                  <p className="text-gray-700 font-medium mb-2">{achievement.member_name}</p>
+                  <p className="text-gray-700 font-medium mb-2">{achievement.memberName || achievement.member_name}</p>
                   {achievement.rank && (
                     <p className="text-blue-600 font-semibold mb-2">{achievement.rank}</p>
                   )}
@@ -245,7 +297,7 @@ export default function ManageAchievements() {
                     <Edit2 size={20} />
                   </button>
                   <button
-                    onClick={() => handleDelete(achievement.id)}
+                    onClick={() => handleDelete(achievement._id || achievement.id)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   >
                     <Trash2 size={20} />

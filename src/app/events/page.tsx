@@ -1,25 +1,56 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Calendar, MapPin, Clock, Image as ImageIcon } from 'lucide-react'
-import { mockEvents } from '@/lib/mock-data'
-import type { Database } from '@/lib/database.types'
+import { EventService } from '@/services/event.service'
 
-type Event = Database['public']['Tables']['events']['Row']
+interface Event {
+  _id?: string;
+  id?: string;
+  title: string;
+  description?: string;
+  date: string;
+  location?: string;
+  status: string;
+  images?: string[];
+  [key: string]: any;
+}
 
 export default function EventsPage() {
+  const [events, setEvents] = useState<Event[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'past'>('all')
   const [yearFilter, setYearFilter] = useState<string>('all')
 
-  const availableYears = useMemo(() => {
-    const years = Array.from(
-      new Set(mockEvents.map((event) => new Date(event.date).getFullYear()))
-    ).sort((a, b) => b - a)
-    return years
+  useEffect(() => {
+    fetchEvents()
   }, [])
 
+  const fetchEvents = async () => {
+    setIsLoading(true)
+    try {
+      const response = await EventService.listEvent()
+      if (response && response.data && response.data.data) {
+        setEvents(response.data.data)
+      } else if (response.error) {
+        console.error('Failed to fetch events:', response.error)
+      }
+    } catch (err) {
+      console.error('Error fetching events:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const availableYears = useMemo(() => {
+    const years = Array.from(
+      new Set(events.map((event) => new Date(event.date).getFullYear()))
+    ).sort((a, b) => b - a)
+    return years
+  }, [events])
+
   const filteredEvents = useMemo(() => {
-    let filtered = [...mockEvents]
+    let filtered = [...events]
     if (statusFilter !== 'all') {
       filtered = filtered.filter((event) => event.status === statusFilter)
     }
@@ -31,7 +62,7 @@ export default function EventsPage() {
     return filtered.sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     )
-  }, [statusFilter, yearFilter])
+  }, [events, statusFilter, yearFilter])
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -76,7 +107,11 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {filteredEvents.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-16">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading Events...</h3>
+          </div>
+        ) : filteredEvents.length === 0 ? (
           <div className="text-center py-16">
             <Calendar className="mx-auto text-gray-400 mb-4" size={64} />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Events Found</h3>
@@ -88,9 +123,9 @@ export default function EventsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {filteredEvents.map((event) => (
+            {filteredEvents.map((event: any) => (
               <div
-                key={event.id}
+                key={event._id || event.id}
                 className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1"
               >
                 <div className="h-48 bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center relative">
@@ -105,11 +140,10 @@ export default function EventsPage() {
                   )}
                   <div className="absolute top-4 right-4">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        event.status === 'upcoming'
-                          ? 'bg-green-500 text-white'
-                          : 'bg-gray-500 text-white'
-                      }`}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${event.status === 'upcoming'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-500 text-white'
+                        }`}
                     >
                       {event.status === 'upcoming' ? 'Upcoming' : 'Past'}
                     </span>

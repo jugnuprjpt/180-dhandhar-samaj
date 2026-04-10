@@ -1,11 +1,21 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Award, Trophy, Medal, Star } from 'lucide-react'
-import { mockAchievements } from '@/lib/mock-data'
-import type { Database } from '@/lib/database.types'
+import { AchievementService } from '@/services/achievement.service'
 
-type Achievement = Database['public']['Tables']['achievements']['Row']
+interface Achievement {
+  _id?: string;
+  id?: string;
+  memberName: string;
+  member_name?: string;
+  title: string;
+  rank?: string;
+  description?: string;
+  date: string;
+  category: 'Academic' | 'Sports' | 'Cultural' | 'Other';
+  image?: string | null;
+}
 
 const categoryIcons = {
   Academic: Trophy,
@@ -24,12 +34,34 @@ const categoryColors = {
 const categories = ['Academic', 'Sports', 'Cultural', 'Other']
 
 export default function AchievementsPage() {
+  const [achievements, setAchievements] = useState<Achievement[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
+  useEffect(() => {
+    fetchAchievements()
+  }, [])
+
+  const fetchAchievements = async () => {
+    setIsLoading(true)
+    try {
+      const response = await AchievementService.listAchievement()
+      if (response && response.data && response.data.data) {
+        setAchievements(response.data.data)
+      } else if (response.error) {
+        console.error('Failed to fetch achievements:', response.error)
+      }
+    } catch (err) {
+      console.error('Error fetching achievements:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const filteredAchievements = useMemo(() => {
-    if (categoryFilter === 'all') return [...mockAchievements]
-    return mockAchievements.filter((a) => a.category === categoryFilter)
-  }, [categoryFilter])
+    if (categoryFilter === 'all') return [...achievements]
+    return achievements.filter((a) => a.category === categoryFilter)
+  }, [achievements, categoryFilter])
 
   const sortedAchievements = useMemo(
     () =>
@@ -53,11 +85,10 @@ export default function AchievementsPage() {
         <div className="flex flex-wrap justify-center gap-3 mb-8">
           <button
             onClick={() => setCategoryFilter('all')}
-            className={`px-6 py-2 rounded-full font-medium transition-all ${
-              categoryFilter === 'all'
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-            }`}
+            className={`px-6 py-2 rounded-full font-medium transition-all ${categoryFilter === 'all'
+              ? 'bg-blue-600 text-white shadow-lg'
+              : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
           >
             All
           </button>
@@ -67,11 +98,10 @@ export default function AchievementsPage() {
               <button
                 key={category}
                 onClick={() => setCategoryFilter(category)}
-                className={`px-6 py-2 rounded-full font-medium transition-all flex items-center gap-2 ${
-                  categoryFilter === category
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`px-6 py-2 rounded-full font-medium transition-all flex items-center gap-2 ${categoryFilter === category
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+                  }`}
               >
                 <Icon size={18} />
                 {category}
@@ -80,7 +110,11 @@ export default function AchievementsPage() {
           })}
         </div>
 
-        {sortedAchievements.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-16">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading Achievements...</h3>
+          </div>
+        ) : sortedAchievements.length === 0 ? (
           <div className="text-center py-16">
             <Award className="mx-auto text-gray-400 mb-4" size={64} />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Achievements Found</h3>
@@ -98,7 +132,7 @@ export default function AchievementsPage() {
 
               return (
                 <div
-                  key={achievement.id}
+                  key={achievement._id || achievement.id}
                   className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1"
                 >
                   <div className={`h-40 bg-gradient-to-br ${gradient} flex items-center justify-center`}>
@@ -120,7 +154,7 @@ export default function AchievementsPage() {
 
                     <h3 className="text-xl font-bold text-gray-900 mb-2">{achievement.title}</h3>
 
-                    <p className="text-gray-700 font-medium mb-3">{achievement.member_name}</p>
+                    <p className="text-gray-700 font-medium mb-3">{achievement.memberName || achievement.member_name}</p>
 
                     {achievement.rank && (
                       <div className="flex items-center gap-2 mb-3">

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Heart, TrendingUp, Users, CheckCircle } from 'lucide-react'
-import { mockDonations, mockDonationGoals } from '@/lib/mock-data'
+import { DonationCreateService } from '@/services/donationCreate.service'
+import { DonationService } from '@/services/donation.service'
 import type { Database } from '@/lib/database.types'
 
 type DonationGoal = Database['public']['Tables']['donation_goals']['Row']
@@ -15,19 +16,48 @@ const tiers = [
 ]
 
 export default function DonationsPage() {
-  const activeGoal = mockDonationGoals.find((g) => g.is_active) ?? mockDonationGoals[0] ?? null
-  const recentDonations = [...mockDonations].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  )
+  const [activeGoal, setActiveGoal] = useState<any>(null)
+  const [recentDonations, setRecentDonations] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
-    donor_name: '',
-    email: '',
+    name: '',
+    address: '',
     amount: '',
   })
   const [selectedTier, setSelectedTier] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+
+  useEffect(() => {
+    fetchGoals()
+    fetchRecentDonations()
+  }, [])
+
+  const fetchGoals = async () => {
+    try {
+      const response = await DonationService.listDonation()
+      if (response && response.data && response.data.data) {
+        const goal = response.data.data.find((g: any) => g.status === 'active') || response.data.data[0] || null
+        setActiveGoal(goal)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const fetchRecentDonations = async () => {
+    try {
+      const response = await DonationCreateService.listDonations()
+      if (response && response.data && response.data.data) {
+        const sorted = response.data.data.sort(
+          (a: any, b: any) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime()
+        )
+        setRecentDonations(sorted)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
   const handleTierSelect = (amount: number) => {
     setSelectedTier(amount)
@@ -38,20 +68,39 @@ export default function DonationsPage() {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
-    setTimeout(() => {
-      setShowSuccess(true)
-      setFormData({ donor_name: '', email: '', amount: '' })
-      setSelectedTier(null)
+
+    try {
+      const payload = {
+        name: formData.name,
+        address: formData.address,
+        amount: Number(formData.amount)
+      }
+
+      const response = await DonationCreateService.createDonation(payload);
+
+      if (response && !response.error) {
+        setShowSuccess(true)
+        setFormData({ name: '', address: '', amount: '' })
+        setSelectedTier(null)
+        await fetchRecentDonations()
+        setTimeout(() => setShowSuccess(false), 3000)
+      } else {
+        throw new Error(response.error || 'Failed to submit donation')
+      }
+    } catch (error) {
+      console.error('Donation error:', error)
+      alert("Failed to submit donation.")
+    } finally {
       setSubmitting(false)
-      setTimeout(() => setShowSuccess(false), 3000)
-    }, 500)
+    }
   }
 
-  const progressPercentage = activeGoal
-    ? Math.min((activeGoal.current_amount / activeGoal.goal_amount) * 100, 100)
+  const current_amount = recentDonations.reduce((acc, curr) => acc + Number(curr.amount || 0), 0)
+  const progressPercentage = activeGoal && Number(activeGoal.amount) > 0
+    ? Math.min((current_amount / Number(activeGoal.amount)) * 100, 100)
     : 0
 
   return (
@@ -95,13 +144,13 @@ export default function DonationsPage() {
                   <div className="flex justify-between items-end">
                     <div>
                       <p className="text-3xl font-bold text-gray-900">
-                        ₹{activeGoal.current_amount.toLocaleString()}
+                        ₹{current_amount.toLocaleString()}
                       </p>
                       <p className="text-sm text-gray-600">raised</p>
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-semibold text-gray-700">
-                        ₹{activeGoal.goal_amount.toLocaleString()}
+                        ₹{Number(activeGoal.amount).toLocaleString()}
                       </p>
                       <p className="text-sm text-gray-600">goal</p>
                     </div>
@@ -121,13 +170,13 @@ export default function DonationsPage() {
                 <div className="space-y-4">
                   {recentDonations.slice(0, 5).map((donation) => (
                     <div
-                      key={donation.id}
+                      key={donation._id || donation.id}
                       className="flex items-center justify-between py-3 border-b last:border-b-0"
                     >
                       <div>
-                        <p className="font-medium text-gray-900">{donation.donor_name}</p>
+                        <p className="font-medium text-gray-900">{donation.name || donation.donor_name}</p>
                         <p className="text-sm text-gray-500">
-                          {new Date(donation.date).toLocaleDateString()}
+                          {donation.date || donation.createdAt ? new Date(donation.date || donation.createdAt).toLocaleDateString() : ''}
                         </p>
                       </div>
                       <div className="text-green-600 font-semibold">
@@ -168,11 +217,10 @@ export default function DonationsPage() {
                         key={tier.amount}
                         type="button"
                         onClick={() => handleTierSelect(tier.amount)}
-                        className={`py-3 px-4 rounded-lg font-semibold transition-all ${
-                          selectedTier === tier.amount
-                            ? 'bg-blue-600 text-white shadow-lg'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
+                        className={`py-3 px-4 rounded-lg font-semibold transition-all ${selectedTier === tier.amount
+                          ? 'bg-blue-600 text-white shadow-lg'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
                       >
                         {tier.label}
                       </button>
@@ -187,8 +235,8 @@ export default function DonationsPage() {
                   <input
                     type="text"
                     required
-                    value={formData.donor_name}
-                    onChange={(e) => setFormData({ ...formData, donor_name: e.target.value })}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                     placeholder="Enter your name"
                   />
@@ -196,15 +244,15 @@ export default function DonationsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Address <span className="text-red-500">*</span>
+                    Your Address <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="email"
+                    type="text"
                     required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                    placeholder="Enter your email"
+                    placeholder="Enter your address"
                   />
                 </div>
 

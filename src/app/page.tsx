@@ -1,27 +1,117 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowRight, Users, Calendar, TrendingUp, Award, MapPin, Clock } from 'lucide-react'
 import {
-  mockEvents,
   mockAchievements,
-  mockMembers,
   mockDonations,
 } from '@/lib/mock-data'
+import { DonationCreateService } from '@/services/donationCreate.service'
+import { MemberService } from '@/services/member.service'
+import { AchievementService } from '@/services/achievement.service'
+import { EventService } from '@/services/event.service'
 import type { Database } from '@/lib/database.types'
 
 type Event = Database['public']['Tables']['events']['Row']
 type Achievement = Database['public']['Tables']['achievements']['Row']
 
 export default function Home() {
-  const totalMembers = mockMembers.length
-  const totalEvents = mockEvents.length
-  const totalFunds = mockDonations.reduce((sum, d) => sum + Number(d.amount), 0)
-  const upcomingEvents = mockEvents
-    .filter((e) => e.status === 'upcoming')
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(0, 3)
-  const featuredAchievements = [...mockAchievements]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 3)
+  const [activeMembersCount, setActiveMembersCount] = useState<number | string>('...')
+  const [featuredAchievements, setFeaturedAchievements] = useState<Achievement[]>([])
+  const [isLoadingAchievements, setIsLoadingAchievements] = useState(true)
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([])
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true)
+  const [totalEventsCount, setTotalEventsCount] = useState<number | string>('...')
+  const [totalFunds, setTotalFunds] = useState<number>(0)
+
+  useEffect(() => {
+    const fetchActiveMembers = async () => {
+      try {
+        const response = await MemberService.listMemberByRole('member')
+        if (response && response.data && response.data.data) {
+          setActiveMembersCount(response.data.data.length)
+        } else {
+          setActiveMembersCount(0)
+        }
+      } catch (err) {
+        console.error('Failed to fetch active members:', err)
+        setActiveMembersCount(0)
+      }
+    }
+
+    const fetchAchievements = async () => {
+      try {
+        const response = await AchievementService.listAchievement()
+        console.log(response)
+        if (response && response.data && response.data.data) {
+          const sorted = [...response.data.data]
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 3)
+          setFeaturedAchievements(sorted)
+        }
+      } catch (err) {
+        console.error('Failed to fetch achievements:', err)
+      } finally {
+        setIsLoadingAchievements(false)
+      }
+    }
+
+    const fetchPastEvents = async () => {
+      try {
+        const response = await EventService.listEventByStatus('past')
+        if (response && response.data && response.data.data) {
+          setTotalEventsCount(response.data.data.length)
+        } else {
+          setTotalEventsCount(0)
+        }
+      } catch (err) {
+        console.error('Failed to fetch past events:', err)
+        setTotalEventsCount(0)
+      }
+    }
+
+    const fetchUpcomingEvents = async () => {
+      try {
+        const response = await EventService.listEventByStatus('upcoming')
+        if (response && response.data && response.data.data) {
+          const eventsList = response.data.data
+          const sorted = eventsList
+            .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .slice(0, 3)
+          setUpcomingEvents(sorted)
+        } else {
+          setUpcomingEvents([])
+        }
+      } catch (err) {
+        console.error('Failed to fetch upcoming events:', err)
+        setUpcomingEvents([])
+      } finally {
+        setIsLoadingEvents(false)
+      }
+    }
+
+    const fetchDonations = async () => {
+      try {
+        const response = await DonationCreateService.listDonations()
+        if (response && response.data && response.data.data) {
+          const sum = response.data.data.reduce((acc: number, curr: any) => acc + Number(curr.amount || 0), 0)
+          setTotalFunds(sum)
+        }
+      } catch (err) {
+        console.error('Failed to fetch donations:', err)
+      }
+    }
+
+    fetchActiveMembers()
+    fetchAchievements()
+    fetchPastEvents()
+    fetchUpcomingEvents()
+    fetchDonations()
+  }, [])
+
+  const totalMembers = activeMembersCount
+  const totalEvents = totalEventsCount
 
   return (
     <div className="min-h-screen">
@@ -161,9 +251,9 @@ export default function Home() {
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {featuredAchievements.map((achievement: Achievement) => (
+              {featuredAchievements.map((achievement: any) => (
                 <div
-                  key={achievement.id}
+                  key={achievement._id || achievement.id}
                   className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1"
                 >
                   {achievement.image && (
@@ -176,7 +266,7 @@ export default function Home() {
                       {achievement.category}
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 mb-2">{achievement.title}</h3>
-                    <p className="text-gray-600 font-medium mb-2">{achievement.member_name}</p>
+                    <p className="text-gray-600 font-medium mb-2">{achievement.memberName || achievement.member_name}</p>
                     {achievement.rank && (
                       <p className="text-blue-600 font-semibold mb-3">{achievement.rank}</p>
                     )}
@@ -212,9 +302,9 @@ export default function Home() {
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {upcomingEvents.map((event: Event) => (
+              {upcomingEvents.map((event: any) => (
                 <div
-                  key={event.id}
+                  key={event._id || event.id}
                   className="bg-white border-2 border-gray-100 rounded-xl overflow-hidden hover:border-blue-600 hover:shadow-lg transition-all"
                 >
                   <div className="h-48 bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">

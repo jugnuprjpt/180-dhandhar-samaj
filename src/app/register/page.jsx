@@ -2,20 +2,47 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Github, Chrome } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Github, Chrome, Loader2 } from 'lucide-react'
+import { AuthService } from '@/services/auth.service'
+import { toast } from 'react-hot-toast'
 
 export default function RegisterPage() {
     const [showPassword, setShowPassword] = useState(false)
-    const [name, setName] = useState('')
+    const [fullname, setFullname] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
-    const [agreeToTerms, setAgreeToTerms] = useState(false)
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const [isLoading, setIsLoading] = useState(false)
+
+    const handleSubmit = async (e) => {
         e.preventDefault()
-        // Registration logic would go here
-        console.log('Register attempt:', { name, email, password, confirmPassword, agreeToTerms })
+
+        if (password !== confirmPassword) {
+            toast.error('Passwords do not match')
+            return
+        }
+
+        setIsLoading(true)
+
+        try {
+            const response = await AuthService.register({ fullname, email, password, confirmPassword })
+
+            if (response.error) {
+                toast.error(response.error)
+            } else {
+                toast.success('Registration successful!')
+                // Success logic: redirect to login or dashboard
+                console.log('Registration successful:', response.data)
+                setTimeout(() => {
+                    window.location.href = '/login'
+                }, 2000)
+            }
+        } catch (err) {
+            toast.error('An unexpected error occurred. Please try again.')
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     return (
@@ -48,13 +75,13 @@ export default function RegisterPage() {
                                     <User className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                                 </div>
                                 <input
-                                    id="name"
+                                    id="fullname"
                                     type="text"
                                     required
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    value={fullname}
+                                    onChange={(e) => setFullname(e.target.value)}
                                     className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm"
-                                    placeholder="John Doe"
+                                    placeholder="Enter your full name"
                                 />
                             </div>
                         </div>
@@ -133,33 +160,23 @@ export default function RegisterPage() {
                             </div>
                         </div>
 
-                        {/* Terms and Conditions */}
-                        <div className="flex items-start">
-                            <div className="flex items-center h-5">
-                                <input
-                                    id="terms"
-                                    type="checkbox"
-                                    required
-                                    checked={agreeToTerms}
-                                    onChange={(e) => setAgreeToTerms(e.target.checked)}
-                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer transition-colors"
-                                />
-                            </div>
-                            <label htmlFor="terms" className="ml-2 block text-sm text-gray-700 cursor-pointer">
-                                I agree to the{' '}
-                                <Link href="/terms" className="text-blue-600 font-medium hover:underline">Terms</Link>
-                                {' '}and{' '}
-                                <Link href="/privacy" className="text-blue-600 font-medium hover:underline">Privacy Policy</Link>
-                            </label>
-                        </div>
-
                         {/* Submit Button */}
                         <button
                             type="submit"
-                            className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                            disabled={isLoading}
+                            className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            Excellence Starts Here
-                            <ArrowRight className="ml-2 h-4 w-4" />
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="animate-spin h-5 w-5 mr-2" />
+                                    Please wait...
+                                </>
+                            ) : (
+                                <>
+                                    Excellence Starts Here
+                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                </>
+                            )}
                         </button>
                     </form>
 

@@ -1,80 +1,154 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2, X, Target } from 'lucide-react'
-import { mockDonations, mockDonationGoals } from '@/lib/mock-data'
+import { mockDonations } from '@/lib/mock-data'
+import { DonationCreateService } from '@/services/donationCreate.service'
+import { DonationService } from '@/services/donation.service'
 import type { Database } from '@/lib/database.types'
 
 type Donation = Database['public']['Tables']['donations']['Row']
-type DonationGoal = Database['public']['Tables']['donation_goals']['Row']
-type DonationGoalInsert = Database['public']['Tables']['donation_goals']['Insert']
+
+interface DonationGoal {
+  _id?: string;
+  id?: string;
+  title: string;
+  description: string;
+  amount: number | string;
+  status: string;
+}
 
 export default function ManageDonations() {
-  const [donations, setDonations] = useState<Donation[]>([...mockDonations])
-  const [goals, setGoals] = useState<DonationGoal[]>([...mockDonationGoals])
+  const [donations, setDonations] = useState<any[]>([])
+  const [goals, setGoals] = useState<DonationGoal[]>([])
   const [showGoalForm, setShowGoalForm] = useState(false)
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
-  const [goalFormData, setGoalFormData] = useState<Partial<DonationGoalInsert>>({
+  const [isLoading, setIsLoading] = useState(true)
+
+  const [goalFormData, setGoalFormData] = useState<Partial<DonationGoal>>({
     title: '',
     description: '',
-    goal_amount: 0,
-    is_active: true,
+    amount: 0,
+    status: 'active',
   })
 
-  const handleGoalSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const now = new Date().toISOString()
-    if (editingGoalId) {
-      setGoals((prev) =>
-        prev.map((g) =>
-          g.id === editingGoalId
-            ? { ...g, ...goalFormData, updated_at: now } as DonationGoal
-            : g
-        )
-      )
-    } else {
-      const newGoal: DonationGoal = {
-        id: `goal-${Date.now()}`,
-        goal_amount: goalFormData.goal_amount ?? 0,
-        current_amount: 0,
-        title: goalFormData.title ?? '',
-        description: goalFormData.description ?? null,
-        is_active: goalFormData.is_active ?? true,
-        created_at: now,
-        updated_at: now,
+  useEffect(() => {
+    fetchGoals()
+    fetchDonations()
+  }, [])
+
+  const fetchDonations = async () => {
+    try {
+      const response = await DonationCreateService.listDonations()
+      if (response && response.data && response.data.data) {
+        setDonations(response.data.data)
       }
-      setGoals((prev) => [newGoal, ...prev])
+    } catch (err) {
+      console.error(err)
     }
-    resetGoalForm()
   }
 
-  const handleEditGoal = (goal: DonationGoal) => {
+  const fetchGoals = async () => {
+    setIsLoading(true)
+    try {
+      const response = await DonationService.listDonation()
+      if (response && response.data && response.data.data) {
+        setGoals(response.data.data)
+      } else if (response.error) {
+        console.error('Failed to fetch goals:', response.error)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+
+    try {
+      const payload = {
+        title: goalFormData.title,
+        description: goalFormData.description,
+        amount: Number(goalFormData.amount),
+        status: goalFormData.status
+      }
+
+      if (editingGoalId) {
+        const response = await DonationService.updateDonation(editingGoalId, payload)
+        if (response.error) {
+          alert('Failed to update donation goal: ' + response.error)
+        }
+      } else {
+        const response = await DonationService.createDonation(payload)
+        console.log(response);
+
+        if (response.error) {
+          alert('Failed to create donation goal: ' + response.error)
+        }
+      }
+
+      await fetchGoals()
+      resetGoalForm()
+    } catch (err) {
+      console.error(err)
+      alert('An error occurred while saving the donation goal.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleEditGoal = (goal: any) => {
     setGoalFormData({
       title: goal.title,
       description: goal.description,
-      goal_amount: goal.goal_amount,
-      is_active: goal.is_active,
+      amount: Number(goal.amount),
+      status: goal.status,
     })
-    setEditingGoalId(goal.id)
+    setEditingGoalId(goal._id || goal.id)
     setShowGoalForm(true)
   }
 
-  const handleDeleteGoal = (id: string) => {
+  const handleDeleteGoal = async (id: string) => {
     if (!confirm('Are you sure you want to delete this goal?')) return
-    setGoals((prev) => prev.filter((g) => g.id !== id))
+    setIsLoading(true)
+    try {
+      const response = await DonationService.deleteDonation(id)
+      if (response.error) {
+        alert('Failed to delete goal: ' + response.error)
+      } else {
+        await fetchGoals()
+      }
+    } catch (err) {
+      console.error(err)
+      alert('An error occurred while deleting.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleDeleteDonation = (id: string) => {
+  const handleDeleteDonation = async (id: string) => {
     if (!confirm('Are you sure you want to delete this donation?')) return
-    setDonations((prev) => prev.filter((d) => d.id !== id))
+    try {
+      const response = await DonationCreateService.deleteDonation(id)
+      if (response && !response.error) {
+        await fetchDonations()
+      } else {
+        alert('Failed to delete donation: ' + response?.error)
+      }
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   const resetGoalForm = () => {
     setGoalFormData({
       title: '',
       description: '',
-      goal_amount: 0,
-      is_active: true,
+      amount: 0,
+      status: 'active',
     })
     setEditingGoalId(null)
     setShowGoalForm(false)
@@ -137,16 +211,16 @@ export default function ManageDonations() {
                     type="number"
                     required
                     min="1"
-                    value={goalFormData.goal_amount}
-                    onChange={(e) => setGoalFormData({ ...goalFormData, goal_amount: parseFloat(e.target.value) })}
+                    value={goalFormData.amount}
+                    onChange={(e) => setGoalFormData({ ...goalFormData, amount: parseFloat(e.target.value) })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select
-                    value={goalFormData.is_active ? 'active' : 'inactive'}
-                    onChange={(e) => setGoalFormData({ ...goalFormData, is_active: e.target.value === 'active' })}
+                    value={goalFormData.status}
+                    onChange={(e) => setGoalFormData({ ...goalFormData, status: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                   >
                     <option value="active">Active</option>
@@ -174,14 +248,17 @@ export default function ManageDonations() {
         )}
 
         <div className="space-y-4">
-          {goals.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-12 text-gray-500">Loading goals...</div>
+          ) : goals.length === 0 ? (
             <div className="text-center py-12 text-gray-500">No goals found. Add your first goal!</div>
           ) : (
             goals.map((goal) => {
-              const progress = (goal.current_amount / goal.goal_amount) * 100
+              const totalRaised = donations.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+              const progress = Number(goal.amount) > 0 ? Math.min((totalRaised / Number(goal.amount)) * 100, 100) : 0;
               return (
                 <div
-                  key={goal.id}
+                  key={goal._id || goal.id}
                   className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
                 >
                   <div className="flex justify-between items-start mb-4">
@@ -190,11 +267,10 @@ export default function ManageDonations() {
                         <Target className="text-blue-600" size={24} />
                         <h3 className="text-xl font-semibold text-gray-900">{goal.title}</h3>
                         <span
-                          className={`px-2 py-1 rounded text-xs font-semibold ${
-                            goal.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                          }`}
+                          className={`px-2 py-1 rounded text-xs font-semibold ${goal.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                            }`}
                         >
-                          {goal.is_active ? 'Active' : 'Inactive'}
+                          {goal.status === 'active' ? 'Active' : 'Inactive'}
                         </span>
                       </div>
                       {goal.description && <p className="text-gray-600 mb-4">{goal.description}</p>}
@@ -210,8 +286,8 @@ export default function ManageDonations() {
                           ></div>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">₹{goal.current_amount.toLocaleString()} raised</span>
-                          <span className="text-gray-600">₹{goal.goal_amount.toLocaleString()} goal</span>
+                          <span className="text-gray-600">₹{totalRaised.toLocaleString()} raised</span>
+                          <span className="text-gray-600">₹{Number(goal.amount).toLocaleString()} goal</span>
                         </div>
                       </div>
                     </div>
@@ -223,7 +299,7 @@ export default function ManageDonations() {
                         <Edit2 size={20} />
                       </button>
                       <button
-                        onClick={() => handleDeleteGoal(goal.id)}
+                        onClick={() => handleDeleteGoal(goal._id || goal.id as string)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       >
                         <Trash2 size={20} />
@@ -253,30 +329,30 @@ export default function ManageDonations() {
           ) : (
             donations.map((donation) => (
               <div
-                key={donation.id}
+                key={donation._id || donation.id}
                 className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-baseline gap-3 mb-2">
-                      <h3 className="text-xl font-semibold text-gray-900">{donation.donor_name}</h3>
+                      <h3 className="text-xl font-semibold text-gray-900">{donation.name || donation.donor_name}</h3>
                       <span className="text-lg font-bold text-green-600">
                         ₹{Number(donation.amount).toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-gray-600 text-sm mb-1">{donation.email}</p>
+                    <p className="text-gray-600 text-sm mb-1">{donation.address || donation.email}</p>
                     <p className="text-sm text-gray-500">
-                      {new Date(donation.date).toLocaleDateString('en-US', {
+                      {donation.date || donation.createdAt ? new Date(donation.date || donation.createdAt).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',
                         hour: 'numeric',
                         minute: '2-digit',
-                      })}
+                      }) : ''}
                     </p>
                   </div>
                   <button
-                    onClick={() => handleDeleteDonation(donation.id)}
+                    onClick={() => handleDeleteDonation(donation._id || donation.id as string)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-4"
                   >
                     <Trash2 size={20} />

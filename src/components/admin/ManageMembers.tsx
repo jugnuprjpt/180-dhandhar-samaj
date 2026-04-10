@@ -1,69 +1,89 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2, X } from 'lucide-react'
-import { mockMembers } from '@/lib/mock-data'
-import type { Database } from '@/lib/database.types'
+import { MemberService } from '@/services/member.service'
 
-type Member = Database['public']['Tables']['members']['Row']
-type MemberInsert = Database['public']['Tables']['members']['Insert']
+interface Member {
+  _id: string;
+  name: string;
+  role: string;
+  year: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export default function ManageMembers() {
-  const [members, setMembers] = useState<Member[]>([...mockMembers])
+  const [members, setMembers] = useState<Member[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [formData, setFormData] = useState<Partial<MemberInsert>>({
+  const [isLoading, setIsLoading] = useState(false)
+  const [formData, setFormData] = useState<Partial<Member>>({
     name: '',
-    role: 'Member',
-    joined_year: new Date().getFullYear(),
+    role: 'member',
+    year: new Date().getFullYear(),
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const now = new Date().toISOString()
-    if (editingId) {
-      setMembers((prev) =>
-        prev.map((m) =>
-          m.id === editingId
-            ? { ...m, ...formData, updated_at: now } as Member
-            : m
-        )
-      )
-    } else {
-      const newMember: Member = {
-        id: `mem-${Date.now()}`,
-        name: formData.name!,
-        role: formData.role ?? 'Member',
-        photo: null,
-        joined_year: formData.joined_year!,
-        created_at: now,
-        updated_at: now,
-      }
-      setMembers((prev) => [newMember, ...prev])
+  const fetchMembers = async () => {
+    const response = await MemberService.listMember();
+    if (response.data && response.data.data) {
+      setMembers(response.data.data);
+    } else if (response.error) {
+      console.error("Failed to fetch members:", response.error);
     }
-    resetForm()
+  }
+
+  useEffect(() => {
+    fetchMembers();
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    
+    let response;
+    if (editingId) {
+      response = await MemberService.updateMember(editingId, formData);
+    } else {
+      response = await MemberService.createMember(formData);
+    }
+
+    if (response.error) {
+      console.error("Failed to save member:", response.error);
+      alert(response.error || "An error occurred while saving.");
+    } else {
+      fetchMembers();
+      resetForm();
+    }
+    setIsLoading(false)
   }
 
   const handleEdit = (member: Member) => {
     setFormData({
       name: member.name,
       role: member.role,
-      joined_year: member.joined_year,
+      year: member.year,
     })
-    setEditingId(member.id)
+    setEditingId(member._id)
     setShowForm(true)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this member?')) return
-    setMembers((prev) => prev.filter((m) => m.id !== id))
+    const response = await MemberService.deleteMember(id);
+    if (response.error) {
+      console.error("Failed to delete member:", response.error);
+      alert(response.error || "An error occurred while deleting.");
+    } else {
+      fetchMembers();
+    }
   }
 
   const resetForm = () => {
     setFormData({
       name: '',
-      role: 'Member',
-      joined_year: new Date().getFullYear(),
+      role: 'member',
+      year: new Date().getFullYear(),
     })
     setEditingId(null)
     setShowForm(false)
@@ -115,11 +135,12 @@ export default function ManageMembers() {
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                 >
-                  <option value="President">President</option>
-                  <option value="Vice President">Vice President</option>
-                  <option value="Secretary">Secretary</option>
-                  <option value="Treasurer">Treasurer</option>
-                  <option value="Member">Member</option>
+                  <option value="presidant">President</option>
+                  <option value="vice-presidant">Vice President</option>
+                  <option value="secretary">Secretary</option>
+                  <option value="Joint Secretary">Joint Secretary</option>
+                  <option value="admin">Admin</option>
+                  <option value="member">Member</option>
                 </select>
               </div>
               <div>
@@ -131,8 +152,8 @@ export default function ManageMembers() {
                   required
                   min="2000"
                   max="2100"
-                  value={formData.joined_year}
-                  onChange={(e) => setFormData({ ...formData, joined_year: parseInt(e.target.value) })}
+                  value={formData.year}
+                  onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                 />
               </div>
@@ -140,9 +161,10 @@ export default function ManageMembers() {
             <div className="flex gap-3">
               <button
                 type="submit"
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={isLoading}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
-                {editingId ? 'Update Member' : 'Add Member'}
+                {isLoading ? 'Saving...' : (editingId ? 'Update Member' : 'Add Member')}
               </button>
               <button
                 type="button"
@@ -162,7 +184,7 @@ export default function ManageMembers() {
         ) : (
           members.map((member) => (
             <div
-              key={member.id}
+              key={member._id}
               className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
             >
               <div className="flex justify-between items-start">
@@ -173,7 +195,7 @@ export default function ManageMembers() {
                       {member.role}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500">Joined {member.joined_year}</p>
+                  <p className="text-sm text-gray-500">Joined {member.year}</p>
                 </div>
                 <div className="flex gap-2 ml-4">
                   <button
@@ -183,7 +205,7 @@ export default function ManageMembers() {
                     <Edit2 size={20} />
                   </button>
                   <button
-                    onClick={() => handleDelete(member.id)}
+                    onClick={() => handleDelete(member._id)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   >
                     <Trash2 size={20} />
