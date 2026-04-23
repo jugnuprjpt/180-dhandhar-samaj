@@ -15,5 +15,9 @@ export const AuthService = {
 
     async getSession() {
         return apiClient.get(API_ENDPOINTS.AUTH.SESSION);
+    },
+
+    async listUsers() {
+        return apiClient.get(API_ENDPOINTS.AUTH.REGISTER_LIST);
     }
 };

@@ -2,11 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Users, Calendar, TrendingUp, Award, MapPin, Clock } from 'lucide-react'
-import {
-  mockAchievements,
-  mockDonations,
-} from '@/lib/mock-data'
+import { ArrowRight, Users, Calendar, TrendingUp, Award, MapPin, Clock, Heart } from 'lucide-react'
 import { DonationCreateService } from '@/services/donationCreate.service'
 import { MemberService } from '@/services/member.service'
 import { AchievementService } from '@/services/achievement.service'
@@ -26,257 +22,149 @@ export default function Home() {
   const [totalFunds, setTotalFunds] = useState<number>(0)
 
   useEffect(() => {
-    const fetchActiveMembers = async () => {
+    const fetchData = async () => {
       try {
-        const response = await MemberService.listMemberByRole('member')
-        if (response && response.data && response.data.data) {
-          setActiveMembersCount(response.data.data.length)
-        } else {
-          setActiveMembersCount(0)
-        }
-      } catch (err) {
-        console.error('Failed to fetch active members:', err)
-        setActiveMembersCount(0)
-      }
-    }
+        const [membersRes, achievementsRes, pastEventsRes, upcomingEventsRes, donationsRes] = await Promise.all([
+          MemberService.listMemberByRole('member'),
+          AchievementService.listAchievement(),
+          EventService.listEventByStatus('past'),
+          EventService.listEventByStatus('upcoming'),
+          DonationCreateService.listDonations()
+        ])
 
-    const fetchAchievements = async () => {
-      try {
-        const response = await AchievementService.listAchievement()
-        console.log(response)
-        if (response && response.data && response.data.data) {
-          const sorted = [...response.data.data]
+        if (membersRes?.data?.data) setActiveMembersCount(membersRes.data.data.length)
+        else setActiveMembersCount(0)
+
+        if (achievementsRes?.data?.data) {
+          const sorted = [...achievementsRes.data.data]
             .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 3)
           setFeaturedAchievements(sorted)
         }
-      } catch (err) {
-        console.error('Failed to fetch achievements:', err)
-      } finally {
-        setIsLoadingAchievements(false)
-      }
-    }
 
-    const fetchPastEvents = async () => {
-      try {
-        const response = await EventService.listEventByStatus('past')
-        if (response && response.data && response.data.data) {
-          setTotalEventsCount(response.data.data.length)
-        } else {
-          setTotalEventsCount(0)
-        }
-      } catch (err) {
-        console.error('Failed to fetch past events:', err)
-        setTotalEventsCount(0)
-      }
-    }
+        if (pastEventsRes?.data?.data) setTotalEventsCount(pastEventsRes.data.data.length)
+        else setTotalEventsCount(0)
 
-    const fetchUpcomingEvents = async () => {
-      try {
-        const response = await EventService.listEventByStatus('upcoming')
-        if (response && response.data && response.data.data) {
-          const eventsList = response.data.data
-          const sorted = eventsList
+        if (upcomingEventsRes?.data?.data) {
+          const sorted = [...upcomingEventsRes.data.data]
             .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
             .slice(0, 3)
           setUpcomingEvents(sorted)
-        } else {
-          setUpcomingEvents([])
+        }
+
+        if (donationsRes?.data?.data) {
+          const sum = donationsRes.data.data.reduce((acc: number, curr: any) => acc + Number(curr.amount || 0), 0)
+          setTotalFunds(sum)
         }
       } catch (err) {
-        console.error('Failed to fetch upcoming events:', err)
-        setUpcomingEvents([])
+        console.error('Failed to fetch home data:', err)
       } finally {
+        setIsLoadingAchievements(false)
         setIsLoadingEvents(false)
       }
     }
 
-    const fetchDonations = async () => {
-      try {
-        const response = await DonationCreateService.listDonations()
-        if (response && response.data && response.data.data) {
-          const sum = response.data.data.reduce((acc: number, curr: any) => acc + Number(curr.amount || 0), 0)
-          setTotalFunds(sum)
-        }
-      } catch (err) {
-        console.error('Failed to fetch donations:', err)
-      }
-    }
-
-    fetchActiveMembers()
-    fetchAchievements()
-    fetchPastEvents()
-    fetchUpcomingEvents()
-    fetchDonations()
+    fetchData()
   }, [])
 
-  const totalMembers = activeMembersCount
-  const totalEvents = totalEventsCount
-
   return (
-    <div className="min-h-screen">
-      <section className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-600 text-white py-20 md:py-32">
-        <div className="absolute inset-0 bg-black opacity-10"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-              Welcome to Our Society
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Section */}
+      <section className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="text-center space-y-8">
+            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 leading-tight">
+              Welcome to Our <span className="text-blue-600">Community Portal</span>
             </h1>
-            <p className="text-xl md:text-2xl mb-8 text-blue-100 leading-relaxed">
-              Building a community of excellence through collaboration, innovation, and shared growth
+            <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
+              Connecting members, celebrating achievements, and building a stronger future together through unity and excellence.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-wrap justify-center gap-4 pt-4">
               <Link
-                href="/members"
-                className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-all transform hover:scale-105 shadow-lg text-center"
+                href="/login"
+                className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md cursor-pointer"
               >
-                Join Us
+                Get Started
               </Link>
               <Link
-                href="/events"
-                className="bg-blue-800 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-900 transition-all transform hover:scale-105 border-2 border-white/20 text-center"
+                href="/about-us"
+                className="px-8 py-3 bg-white text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors cursor-pointer"
               >
-                View Events
-              </Link>
-              <Link
-                href="/donations"
-                className="bg-transparent text-white px-8 py-3 rounded-lg font-semibold hover:bg-white/10 transition-all transform hover:scale-105 border-2 border-white text-center"
-              >
-                Donate
+                Learn More
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-16 bg-gray-50">
+      {/* Stats Section */}
+      <section className="py-16 bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">About Our Society</h2>
-            <div className="w-20 h-1 bg-blue-600 mx-auto mb-6"></div>
-          </div>
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Our Vision</h3>
-              <p className="text-gray-600 leading-relaxed mb-6">
-                To create an inclusive community where every member can thrive, innovate, and contribute to meaningful change. We believe in fostering excellence through collaboration and continuous learning.
-              </p>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Our Mission</h3>
-              <p className="text-gray-600 leading-relaxed">
-                We strive to provide opportunities for personal and professional development, organize impactful events, recognize outstanding achievements, and build lasting connections among members. Together, we&apos;re shaping the future of our community.
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div className="p-8 rounded-xl bg-blue-50 border border-blue-100">
+              <div className="text-3xl font-bold text-blue-900 mb-1">{activeMembersCount}+</div>
+              <div className="text-sm font-semibold text-blue-600 uppercase tracking-wider">Active Members</div>
             </div>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                  <Users className="text-blue-600" size={24} />
-                </div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">Community</h4>
-                <p className="text-gray-600 text-sm">Building strong connections</p>
-              </div>
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                  <TrendingUp className="text-green-600" size={24} />
-                </div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">Growth</h4>
-                <p className="text-gray-600 text-sm">Continuous improvement</p>
-              </div>
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-                  <Award className="text-purple-600" size={24} />
-                </div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">Excellence</h4>
-                <p className="text-gray-600 text-sm">Celebrating achievements</p>
-              </div>
-              <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-shadow">
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4">
-                  <Calendar className="text-orange-600" size={24} />
-                </div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">Events</h4>
-                <p className="text-gray-600 text-sm">Engaging activities</p>
-              </div>
+            <div className="p-8 rounded-xl bg-green-50 border border-green-100">
+              <div className="text-3xl font-bold text-green-900 mb-1">{totalEventsCount}+</div>
+              <div className="text-sm font-semibold text-green-600 uppercase tracking-wider">Events Held</div>
+            </div>
+            <div className="p-8 rounded-xl bg-purple-50 border border-purple-100">
+              <div className="text-3xl font-bold text-purple-900 mb-1">₹{totalFunds.toLocaleString()}</div>
+              <div className="text-sm font-semibold text-purple-600 uppercase tracking-wider">Total Donations</div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-16 bg-white">
+      {/* Main Features */}
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Our Impact</h2>
-            <div className="w-20 h-1 bg-blue-600 mx-auto mb-6"></div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-8 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl">
-              <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="text-white" size={32} />
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[
+              { icon: Users, title: 'Community', desc: 'Join our growing network of dedicated members.', color: 'text-blue-600', bg: 'bg-blue-100' },
+              { icon: Award, title: 'Achievements', desc: 'Recognizing excellence in various fields.', color: 'text-yellow-600', bg: 'bg-yellow-100' },
+              { icon: Calendar, title: 'Events', desc: 'Stay updated with our latest gatherings.', color: 'text-green-600', bg: 'bg-green-100' },
+              { icon: Heart, title: 'Donations', desc: 'Support our mission through contributions.', color: 'text-red-600', bg: 'bg-red-100' },
+            ].map((feature, idx) => (
+              <div key={idx} className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div className={`${feature.bg} ${feature.color} w-12 h-12 rounded-lg flex items-center justify-center mb-6`}>
+                  <feature.icon size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{feature.title}</h3>
+                <p className="text-gray-600 text-sm">{feature.desc}</p>
               </div>
-              <div className="text-4xl font-bold text-gray-900 mb-2">{totalMembers}</div>
-              <div className="text-gray-600 font-medium">Active Members</div>
-            </div>
-            <div className="text-center p-8 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
-              <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Calendar className="text-white" size={32} />
-              </div>
-              <div className="text-4xl font-bold text-gray-900 mb-2">{totalEvents}</div>
-              <div className="text-gray-600 font-medium">Events Organized</div>
-            </div>
-            <div className="text-center p-8 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl">
-              <div className="w-16 h-16 bg-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="text-white" size={32} />
-              </div>
-              <div className="text-4xl font-bold text-gray-900 mb-2">
-                ₹{totalFunds.toLocaleString()}
-              </div>
-              <div className="text-gray-600 font-medium">Funds Raised</div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
+      {/* Featured Achievements */}
       {featuredAchievements.length > 0 && (
-        <section className="py-16 bg-gray-50">
+        <section className="py-20 bg-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center mb-12">
+            <div className="flex justify-between items-end mb-12">
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Featured Achievements</h2>
-                <div className="w-20 h-1 bg-blue-600"></div>
+                <h2 className="text-3xl font-bold text-gray-900">Featured Achievements</h2>
+                <p className="text-gray-600 mt-2">Celebrating excellence in our community</p>
               </div>
-              <Link
-                href="/achievements"
-                className="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-2 group"
-              >
-                View All
-                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              <Link href="/achievements" className="text-blue-600 font-semibold flex items-center gap-2 hover:underline cursor-pointer">
+                View All <ArrowRight size={20} />
               </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-3 gap-8">
               {featuredAchievements.map((achievement: any) => (
-                <div
-                  key={achievement._id || achievement.id}
-                  className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1"
-                >
-                  {achievement.image && (
-                    <div className="h-48 bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center">
-                      <Award className="text-blue-600" size={64} />
-                    </div>
-                  )}
+                <div key={achievement._id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200 hover:shadow-md transition-shadow">
                   <div className="p-6">
-                    <div className="inline-block px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-semibold mb-3">
+                    <div className="flex items-center gap-2 text-blue-600 text-xs font-bold uppercase tracking-wider mb-4">
+                      <Award size={16} />
                       {achievement.category}
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 mb-2">{achievement.title}</h3>
-                    <p className="text-gray-600 font-medium mb-2">{achievement.memberName || achievement.member_name}</p>
-                    {achievement.rank && (
-                      <p className="text-blue-600 font-semibold mb-3">{achievement.rank}</p>
-                    )}
-                    <p className="text-gray-500 text-sm">
-                      {new Date(achievement.date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </p>
+                    <p className="text-gray-600 text-sm mb-4">{achievement.memberName || achievement.member_name}</p>
+                    <div className="text-xs text-gray-400 font-medium">
+                      {new Date(achievement.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -285,49 +173,42 @@ export default function Home() {
         </section>
       )}
 
+      {/* Upcoming Events */}
       {upcomingEvents.length > 0 && (
-        <section className="py-16 bg-white">
+        <section className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center mb-12">
+            <div className="flex justify-between items-end mb-12">
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Upcoming Events</h2>
-                <div className="w-20 h-1 bg-blue-600"></div>
+                <h2 className="text-3xl font-bold text-gray-900">Upcoming Events</h2>
+                <p className="text-gray-600 mt-2">Join us in our next community gathering</p>
               </div>
-              <Link
-                href="/events"
-                className="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-2 group"
-              >
-                View All
-                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              <Link href="/events" className="text-blue-600 font-semibold flex items-center gap-2 hover:underline cursor-pointer">
+                Full Calendar <ArrowRight size={20} />
               </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-3 gap-8">
               {upcomingEvents.map((event: any) => (
-                <div
-                  key={event._id || event.id}
-                  className="bg-white border-2 border-gray-100 rounded-xl overflow-hidden hover:border-blue-600 hover:shadow-lg transition-all"
-                >
-                  <div className="h-48 bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                    <Calendar className="text-white" size={64} />
-                  </div>
+                <div key={event._id} className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-all group">
                   <div className="p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-3">{event.title}</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-start text-gray-600">
-                        <Clock className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
-                        <span className="text-sm">
-                          {new Date(event.date).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </span>
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="bg-blue-600 text-white p-3 rounded-lg text-center min-w-[60px]">
+                        <div className="text-lg font-bold leading-none">{new Date(event.date).getDate()}</div>
+                        <div className="text-[10px] uppercase font-bold mt-1">{new Date(event.date).toLocaleDateString('en-US', { month: 'short' })}</div>
+                      </div>
+                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase">
+                        Upcoming
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors">{event.title}</h3>
+                    <div className="space-y-3 text-sm text-gray-500">
+                      <div className="flex items-center gap-3">
+                        <Clock size={16} />
+                        {new Date(event.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                       </div>
                       {event.location && (
-                        <div className="flex items-start text-gray-600">
-                          <MapPin className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
-                          <span className="text-sm">{event.location}</span>
+                        <div className="flex items-center gap-3">
+                          <MapPin size={16} />
+                          {event.location}
                         </div>
                       )}
                     </div>

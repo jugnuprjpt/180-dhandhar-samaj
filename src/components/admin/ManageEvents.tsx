@@ -128,7 +128,7 @@ export default function ManageEvents() {
         <h2 className="text-2xl font-bold text-gray-900">Manage Events</h2>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
         >
           <Plus size={20} />
           Add Event
@@ -141,7 +141,7 @@ export default function ManageEvents() {
             <h3 className="text-xl font-semibold text-gray-900">
               {editingId ? 'Edit Event' : 'Add New Event'}
             </h3>
-            <button onClick={resetForm} className="text-gray-500 hover:text-gray-700">
+            <button onClick={resetForm} className="text-gray-500 hover:text-gray-700 cursor-pointer">
               <X size={24} />
             </button>
           </div>
@@ -207,14 +207,14 @@ export default function ManageEvents() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {isLoading ? 'Processing...' : (editingId ? 'Update Event' : 'Add Event')}
               </button>
               <button
                 type="button"
                 onClick={resetForm}
-                className="px-6 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                className="px-6 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -264,13 +264,13 @@ export default function ManageEvents() {
                 <div className="flex gap-2 ml-4">
                   <button
                     onClick={() => handleEdit(event)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                   >
                     <Edit2 size={20} />
                   </button>
                   <button
                     onClick={() => handleDelete(event._id || event.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                   >
                     <Trash2 size={20} />
                   </button>

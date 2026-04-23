@@ -1,8 +1,9 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import { Award, Trophy, Medal, Star } from 'lucide-react'
+import { Award, Trophy, Medal, Star, CheckCircle2, ArrowRight } from 'lucide-react'
 import { AchievementService } from '@/services/achievement.service'
+import Link from 'next/link'
 
 interface Achievement {
   _id?: string;
@@ -24,13 +25,6 @@ const categoryIcons = {
   Other: Award,
 }
 
-const categoryColors = {
-  Academic: 'from-blue-500 to-cyan-500',
-  Sports: 'from-green-500 to-emerald-500',
-  Cultural: 'from-purple-500 to-pink-500',
-  Other: 'from-orange-500 to-amber-500',
-}
-
 const categories = ['Academic', 'Sports', 'Cultural', 'Other']
 
 export default function AchievementsPage() {
@@ -48,8 +42,6 @@ export default function AchievementsPage() {
       const response = await AchievementService.listAchievement()
       if (response && response.data && response.data.data) {
         setAchievements(response.data.data)
-      } else if (response.error) {
-        console.error('Failed to fetch achievements:', response.error)
       }
     } catch (err) {
       console.error('Error fetching achievements:', err)
@@ -72,119 +64,130 @@ export default function AchievementsPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Our Achievements</h1>
-          <div className="w-20 h-1 bg-blue-600 mx-auto mb-6"></div>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Celebrating the outstanding accomplishments of our members
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Page Header */}
+      <section className="bg-white border-b border-gray-200 py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-xs font-bold uppercase tracking-wide mb-6">
+            <Trophy size={16} />
+            Hall of Achievements
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            Celebrating <span className="text-blue-600">Excellence</span>
+          </h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Honoring the outstanding contributions and successes of our community members across all fields of endeavor.
           </p>
         </div>
+      </section>
 
-        <div className="flex flex-wrap justify-center gap-3 mb-8">
-          <button
-            onClick={() => setCategoryFilter('all')}
-            className={`px-6 py-2 rounded-full font-medium transition-all ${categoryFilter === 'all'
-              ? 'bg-blue-600 text-white shadow-lg'
-              : 'bg-white text-gray-700 hover:bg-gray-100'
+      {/* Filter Bar */}
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-auto scollbar-hide">
+          <div className="flex items-center gap-2 min-w-max pb-1 sm:pb-0">
+            <button
+              onClick={() => setCategoryFilter('all')}
+              className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                categoryFilter === 'all'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
-          >
-            All
-          </button>
-          {categories.map((category) => {
-            const Icon = categoryIcons[category as keyof typeof categoryIcons]
-            return (
-              <button
-                key={category}
-                onClick={() => setCategoryFilter(category)}
-                className={`px-6 py-2 rounded-full font-medium transition-all flex items-center gap-2 ${categoryFilter === category
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
+            >
+              All Merits
+            </button>
+            {categories.map((category) => {
+              const Icon = categoryIcons[category as keyof typeof categoryIcons]
+              return (
+                <button
+                  key={category}
+                  onClick={() => setCategoryFilter(category)}
+                  className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
+                    categoryFilter === category
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
-              >
-                <Icon size={18} />
-                {category}
-              </button>
-            )
-          })}
+                >
+                  <Icon size={14} />
+                  {category}
+                </button>
+              )
+            })}
+          </div>
         </div>
+      </div>
 
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {isLoading ? (
-          <div className="text-center py-16">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Loading Achievements...</h3>
+          <div className="text-center py-20 text-gray-500 font-medium animate-pulse">
+            Retrieving achievements...
           </div>
         ) : sortedAchievements.length === 0 ? (
-          <div className="text-center py-16">
-            <Award className="mx-auto text-gray-400 mb-4" size={64} />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Achievements Found</h3>
-            <p className="text-gray-600">
-              {categoryFilter !== 'all'
-                ? 'Try selecting a different category'
-                : 'Check back later for new achievements'}
-            </p>
+          <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
+            <Award className="mx-auto text-gray-200 mb-6" size={64} />
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">No achievements found</h3>
+            <p className="text-gray-500 mb-8">No records match the selected category.</p>
+            <button
+              onClick={() => setCategoryFilter('all')}
+              className="px-8 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-blue-600 transition-all cursor-pointer"
+            >
+              Show All
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {sortedAchievements.map((achievement) => {
-              const Icon = categoryIcons[achievement.category as keyof typeof categoryIcons]
-              const gradient = categoryColors[achievement.category as keyof typeof categoryColors]
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {sortedAchievements.map((achievement: any) => {
+              const Icon = categoryIcons[achievement.category as keyof typeof categoryIcons] || Award
 
               return (
                 <div
                   key={achievement._id || achievement.id}
-                  className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all transform hover:-translate-y-1"
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group flex flex-col h-full"
                 >
-                  <div className={`h-40 bg-gradient-to-br ${gradient} flex items-center justify-center`}>
-                    {achievement.image ? (
-                      <img
-                        src={achievement.image}
-                        alt={achievement.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Icon className="text-white" size={64} />
-                    )}
-                  </div>
-
                   <div className="p-6">
-                    <div className="inline-block px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-semibold mb-3">
-                      {achievement.category}
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
+                        <Icon size={24} />
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs font-bold text-gray-400">{new Date(achievement.date).getFullYear()}</div>
+                        <div className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{achievement.category}</div>
+                      </div>
                     </div>
-
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{achievement.title}</h3>
-
-                    <p className="text-gray-700 font-medium mb-3">{achievement.memberName || achievement.member_name}</p>
 
                     {achievement.rank && (
-                      <div className="flex items-center gap-2 mb-3">
-                        <Trophy className="text-yellow-500" size={18} />
-                        <span className="text-blue-600 font-semibold">{achievement.rank}</span>
-                      </div>
+                      <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 text-[10px] font-bold uppercase rounded-md mb-3">
+                        {achievement.rank}
+                      </span>
                     )}
+
+                    <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors">
+                      {achievement.title}
+                    </h3>
+                    
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-1 h-4 bg-blue-600 rounded-full"></div>
+                      <span className="text-sm font-bold text-gray-700">{achievement.memberName || achievement.member_name}</span>
+                    </div>
 
                     {achievement.description && (
-                      <p className="text-gray-600 text-sm mb-4 leading-relaxed">
-                        {achievement.description}
+                      <p className="text-gray-600 text-sm italic line-clamp-3 mb-6">
+                        "{achievement.description}"
                       </p>
                     )}
-
-                    <div className="border-t pt-4">
-                      <p className="text-gray-500 text-sm">
-                        {new Date(achievement.date).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                      </p>
-                    </div>
+                  </div>
+                  
+                  <div className="mt-auto p-6 border-t border-gray-50 flex justify-between items-center bg-gray-50/50">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      ID: {String(achievement._id || achievement.id).slice(-4)}
+                    </span>
+                    <CheckCircle2 size={16} className="text-blue-500" />
                   </div>
                 </div>
               )
             })}
           </div>
         )}
-      </div>
+      </main>
     </div>
   )
 }

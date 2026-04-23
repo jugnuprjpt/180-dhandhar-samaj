@@ -1,12 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Heart, TrendingUp, Users, CheckCircle } from 'lucide-react'
+import { Heart, TrendingUp, Users, CheckCircle2, ChevronRight } from 'lucide-react'
 import { DonationCreateService } from '@/services/donationCreate.service'
 import { DonationService } from '@/services/donation.service'
-import type { Database } from '@/lib/database.types'
-
-type DonationGoal = Database['public']['Tables']['donation_goals']['Row']
 
 const tiers = [
   { amount: 100, label: '₹100' },
@@ -104,188 +101,188 @@ export default function DonationsPage() {
     : 0
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Support Our Mission</h1>
-          <div className="w-20 h-1 bg-blue-600 mx-auto mb-6"></div>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Your generous contributions help us create meaningful impact in our community
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Page Header */}
+      <section className="bg-white border-b border-gray-200 py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-50 text-red-700 rounded-full text-xs font-bold uppercase tracking-wide mb-6">
+            <Heart size={16} />
+            Support Our Mission
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            Make a <span className="text-blue-600">Difference</span>
+          </h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Your contributions help us fund community events, support members in need, and grow our shared initiatives.
           </p>
         </div>
+      </section>
 
-        <div className="grid lg:grid-cols-2 gap-8 mb-12">
-          <div className="space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="grid lg:grid-cols-12 gap-12">
+          
+          {/* Progress & Goals */}
+          <div className="lg:col-span-7 space-y-12">
             {activeGoal && (
-              <div className="bg-white rounded-xl shadow-lg p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <TrendingUp className="text-blue-600" size={24} />
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+                    <TrendingUp size={24} />
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{activeGoal.title}</h2>
-                    {activeGoal.description && (
-                      <p className="text-gray-600">{activeGoal.description}</p>
-                    )}
-                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">{activeGoal.title}</h2>
                 </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between text-sm font-medium">
-                    <span className="text-gray-600">Progress</span>
-                    <span className="text-blue-600">{progressPercentage.toFixed(1)}%</span>
+                
+                <div className="space-y-6">
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Raised So Far</p>
+                      <p className="text-4xl font-bold text-gray-900">₹{current_amount.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Target Goal</p>
+                      <p className="text-2xl font-bold text-gray-700">₹{Number(activeGoal.amount).toLocaleString()}</p>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+
+                  <div className="h-4 bg-gray-100 rounded-full overflow-hidden p-1 shadow-inner">
                     <div
-                      className="bg-gradient-to-r from-blue-600 to-cyan-500 h-full rounded-full transition-all duration-500"
+                      className="h-full bg-blue-600 rounded-full transition-all duration-1000 shadow-sm"
                       style={{ width: `${progressPercentage}%` }}
                     ></div>
                   </div>
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <p className="text-3xl font-bold text-gray-900">
-                        ₹{current_amount.toLocaleString()}
-                      </p>
-                      <p className="text-sm text-gray-600">raised</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-semibold text-gray-700">
-                        ₹{Number(activeGoal.amount).toLocaleString()}
-                      </p>
-                      <p className="text-sm text-gray-600">goal</p>
-                    </div>
+
+                  <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-gray-400">
+                    <span>Goal: {activeGoal.status}</span>
+                    <span className="text-blue-600">{progressPercentage.toFixed(1)}% Completed</span>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {recentDonations.length > 0 && (
-              <div className="bg-white rounded-xl shadow-lg p-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <Users className="text-green-600" size={24} />
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900">Recent Supporters</h2>
-                </div>
-                <div className="space-y-4">
-                  {recentDonations.slice(0, 5).map((donation) => (
-                    <div
-                      key={donation._id || donation.id}
-                      className="flex items-center justify-between py-3 border-b last:border-b-0"
-                    >
-                      <div>
-                        <p className="font-medium text-gray-900">{donation.name || donation.donor_name}</p>
-                        <p className="text-sm text-gray-500">
-                          {donation.date || donation.createdAt ? new Date(donation.date || donation.createdAt).toLocaleDateString() : ''}
-                        </p>
-                      </div>
-                      <div className="text-green-600 font-semibold">
-                        ₹{Number(donation.amount).toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
-                <Heart className="text-pink-600" size={24} />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">Make a Donation</h2>
-            </div>
-
-            {showSuccess ? (
-              <div className="text-center py-12">
-                <CheckCircle className="text-green-600 mx-auto mb-4" size={64} />
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h3>
-                <p className="text-gray-600">
-                  Your generous contribution makes a real difference in our community.
+                <p className="mt-8 text-gray-600 border-t border-gray-50 pt-6">
+                  {activeGoal.description}
                 </p>
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Amount
-                  </label>
+            )}
+
+            {/* Honor Roll */}
+            <div className="space-y-6">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Users size={20} />
+                Recent Contributors
+              </h2>
+              <div className="grid gap-4">
+                {recentDonations.slice(0, 5).map((donation) => (
+                  <div
+                    key={donation._id || donation.id}
+                    className="bg-white rounded-xl border border-gray-100 p-6 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
+                        <Users size={18} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{donation.name || donation.donor_name}</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">
+                          Verified Donation • {new Date(donation.date || donation.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-lg font-bold text-green-600">
+                      ₹{Number(donation.amount).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Donation Form */}
+          <div className="lg:col-span-5">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 sticky top-24">
+              {showSuccess ? (
+                <div className="text-center py-10 space-y-6">
+                  <div className="w-20 h-20 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle2 size={48} />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900">Thank You!</h3>
+                  <p className="text-gray-600">Your generous contribution has been recorded.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-8">
+                  <h2 className="text-2xl font-bold text-gray-900">Quick Donate</h2>
+                  
                   <div className="grid grid-cols-2 gap-3">
                     {tiers.map((tier) => (
                       <button
                         key={tier.amount}
                         type="button"
                         onClick={() => handleTierSelect(tier.amount)}
-                        className={`py-3 px-4 rounded-lg font-semibold transition-all ${selectedTier === tier.amount
-                          ? 'bg-blue-600 text-white shadow-lg'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
+                        className={`py-4 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                          selectedTier === tier.amount
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                        }`}
                       >
                         {tier.label}
                       </button>
                     ))}
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Your Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                    placeholder="Enter your name"
-                  />
-                </div>
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block">Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-600 outline-none transition-all"
+                        placeholder="Your Name"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Your Address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                    placeholder="Enter your address"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block">Amount (₹)</label>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        value={formData.amount}
+                        onChange={(e) => {
+                          setFormData({ ...formData, amount: e.target.value })
+                          setSelectedTier(null)
+                        }}
+                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold text-gray-900 focus:ring-2 focus:ring-blue-600 outline-none transition-all"
+                        placeholder="0"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Amount (₹) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={formData.amount}
-                    onChange={(e) => {
-                      setFormData({ ...formData, amount: e.target.value })
-                      setSelectedTier(null)
-                    }}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                    placeholder="Enter amount"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-widest block">Contact/Address</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-600 outline-none transition-all"
+                        placeholder="Email or Location"
+                      />
+                    </div>
+                  </div>
 
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  {submitting ? 'Processing...' : 'Donate Now'}
-                </button>
-              </form>
-            )}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full py-5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg active:scale-95 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {submitting ? 'Processing...' : 'Complete Donation'}
+                    <ChevronRight size={18} />
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

@@ -6,6 +6,7 @@ export const API_ENDPOINTS = {
         REGISTER: '/auth/register',
         LOGOUT: '/auth/logout',
         SESSION: '/auth/session',
+        REGISTER_LIST: '/registerlist',
     },
     MEMBERS: {
         LIST: '/members/list',
@@ -33,6 +34,11 @@ export const API_ENDPOINTS = {
         LIST: '/achievements/list',
         CREATE: '/achievements/create',
         BY_ID: (id) => `/achievements/${id}`,
+    },
+    FAMILY: {
+        LIST: '/family/list',
+        UPDATE: '/family/update',
+        BY_AUTH: (authId) => `/family/${authId}`
     }
 };
 
