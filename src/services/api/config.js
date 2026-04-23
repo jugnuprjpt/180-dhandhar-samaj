@@ -1,4 +1,4 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const BASE_URL = 'https://180-dhandhar-samaj.vercel.app' || 'http://localhost:5000';
 
 export const API_ENDPOINTS = {
     AUTH: {
