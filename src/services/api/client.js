@@ -24,6 +24,7 @@ class ApiClient {
                 method,
                 headers,
                 body: options.body ? JSON.stringify(options.body) : undefined,
+                credentials: options.credentials || 'include',
                 cache: options.cache || 'default',
                 next: options.next,
             });
